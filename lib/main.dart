@@ -114,7 +114,7 @@ class _HomePageState extends State<HomePage>
                 decoration: InputDecoration(
                   hintText: 'Search location...',
                   filled: true,
-                  fillColor: Colors.white.withOpacity(0.85),
+                  fillColor: Colors.white.withAlpha((0.85 * 255).round()),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(20),
                     borderSide: BorderSide.none,
