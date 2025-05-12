@@ -20,47 +20,77 @@ class WeatherService {
 
   // Get complete weather data by city name
   Future<WeatherData> getWeatherByCity(String city) async {
-    // Get current weather
-    final currentWeatherResponse = await http.get(
-      Uri.parse('$_baseUrl?q=$city&units=metric&appid=$_apiKey'),
-    );
+    try {
+      // Get current weather
+      final currentWeatherResponse = await http
+          .get(Uri.parse('$_baseUrl?q=$city&units=metric&appid=$_apiKey'))
+          .timeout(const Duration(seconds: 10));
 
-    if (currentWeatherResponse.statusCode == 200) {
-      final currentWeatherData = jsonDecode(currentWeatherResponse.body);
-      final lat = currentWeatherData['coord']['lat'];
-      final lon = currentWeatherData['coord']['lon'];
+      if (currentWeatherResponse.statusCode == 200) {
+        final currentWeatherData = jsonDecode(currentWeatherResponse.body);
+        final lat = currentWeatherData['coord']['lat'];
+        final lon = currentWeatherData['coord']['lon'];
 
-      // Create initial weather data from current weather
-      WeatherData weatherData = WeatherData.fromJson(currentWeatherData);
+        // Create initial weather data from current weather
+        WeatherData weatherData = WeatherData.fromJson(currentWeatherData);
 
-      // Add forecast data
-      return _addForecastData(weatherData, lat, lon);
-    } else {
-      throw Exception(
-        'Failed to load weather data: ${currentWeatherResponse.statusCode}',
-      );
+        // Add forecast data
+        return _addForecastData(weatherData, lat, lon);
+      } else if (currentWeatherResponse.statusCode == 404) {
+        throw Exception(
+          'City not found. Please check the city name and try again.',
+        );
+      } else {
+        throw Exception(
+          'Failed to load weather data: ${currentWeatherResponse.statusCode}',
+        );
+      }
+    } on Exception catch (e) {
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('TimeoutException')) {
+        throw Exception(
+          'Network connection error. Please check your internet connection and try again.',
+        );
+      }
+      // Re-throw the original exception if it's not a connection issue
+      rethrow;
     }
   }
 
   // Get complete weather data by coordinates (lat/lon)
   Future<WeatherData> getWeatherByCoordinates(double lat, double lon) async {
-    // Get current weather
-    final currentWeatherResponse = await http.get(
-      Uri.parse('$_baseUrl?lat=$lat&lon=$lon&units=metric&appid=$_apiKey'),
-    );
+    try {
+      // Get current weather
+      final currentWeatherResponse = await http
+          .get(
+            Uri.parse(
+              '$_baseUrl?lat=$lat&lon=$lon&units=metric&appid=$_apiKey',
+            ),
+          )
+          .timeout(const Duration(seconds: 10));
 
-    if (currentWeatherResponse.statusCode == 200) {
-      // Create initial weather data from current weather
-      WeatherData weatherData = WeatherData.fromJson(
-        jsonDecode(currentWeatherResponse.body),
-      );
+      if (currentWeatherResponse.statusCode == 200) {
+        // Create initial weather data from current weather
+        WeatherData weatherData = WeatherData.fromJson(
+          jsonDecode(currentWeatherResponse.body),
+        );
 
-      // Add forecast data
-      return _addForecastData(weatherData, lat, lon);
-    } else {
-      throw Exception(
-        'Failed to load weather data: ${currentWeatherResponse.statusCode}',
-      );
+        // Add forecast data
+        return _addForecastData(weatherData, lat, lon);
+      } else {
+        throw Exception(
+          'Failed to load weather data: ${currentWeatherResponse.statusCode}',
+        );
+      }
+    } on Exception catch (e) {
+      if (e.toString().contains('SocketException') ||
+          e.toString().contains('TimeoutException')) {
+        throw Exception(
+          'Network connection error. Please check your internet connection and try again.',
+        );
+      }
+      // Re-throw the original exception if it's not a connection issue
+      rethrow;
     }
   }
 

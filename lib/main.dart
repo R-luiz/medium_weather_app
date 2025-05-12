@@ -115,6 +115,44 @@ class _HomePageState extends State<HomePage>
                       ),
             ),
 
+          // Persistent error message for city not found or API connection issues
+          if (_weatherErrorMessage != null)
+            Container(
+              padding: const EdgeInsets.all(12.0),
+              margin: const EdgeInsets.symmetric(
+                horizontal: 8.0,
+                vertical: 8.0,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                border: Border.all(color: Colors.red.shade200),
+                borderRadius: BorderRadius.circular(8.0),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _weatherErrorMessage!.contains('city')
+                        ? Icons.location_off
+                        : Icons.wifi_off,
+                    color: Colors.red,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      _weatherErrorMessage!,
+                      style: const TextStyle(color: Colors.red),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, color: Colors.red),
+                    onPressed:
+                        () => setState(() => _weatherErrorMessage = null),
+                  ),
+                ],
+              ),
+            ),
+
           // Tab content
           Expanded(
             child: TabBarView(
@@ -135,6 +173,7 @@ class _HomePageState extends State<HomePage>
   String _displayText = '';
   Position? _currentPosition;
   String? _errorMessage;
+  String? _weatherErrorMessage;
   bool _isLoadingLocation = false;
   List<CitySuggestion> _citySuggestions = [];
   bool _isLoadingSuggestions = false;
@@ -275,6 +314,7 @@ class _HomePageState extends State<HomePage>
   Future<void> _fetchWeatherData(double latitude, double longitude) async {
     setState(() {
       _isLoadingWeather = true;
+      _weatherErrorMessage = null; // Clear any previous weather errors
     });
 
     try {
@@ -290,6 +330,7 @@ class _HomePageState extends State<HomePage>
     } catch (e) {
       setState(() {
         _isLoadingWeather = false;
+        _weatherErrorMessage = e.toString(); // Store the error message
       });
 
       if (mounted) {
@@ -309,6 +350,7 @@ class _HomePageState extends State<HomePage>
 
     setState(() {
       _isLoadingWeather = true;
+      _weatherErrorMessage = null; // Clear any previous weather errors
       _citySuggestions = []; // Clear suggestions when performing a search
     });
 
@@ -326,6 +368,7 @@ class _HomePageState extends State<HomePage>
     } catch (e) {
       setState(() {
         _isLoadingWeather = false;
+        _weatherErrorMessage = e.toString(); // Store the error message
       });
 
       if (mounted) {
@@ -343,6 +386,7 @@ class _HomePageState extends State<HomePage>
   Future<void> _searchByCitySuggestion(CitySuggestion suggestion) async {
     setState(() {
       _isLoadingWeather = true;
+      _weatherErrorMessage = null; // Clear any previous weather errors
       _citySuggestions = []; // Clear suggestions
       _searchController.clear(); // Clear search field
     });
@@ -358,11 +402,12 @@ class _HomePageState extends State<HomePage>
         _isLoadingWeather = false;
       });
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _isLoadingWeather = false;
-        });
+      setState(() {
+        _isLoadingWeather = false;
+        _weatherErrorMessage = e.toString(); // Store the error message
+      });
 
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Error fetching weather: ${e.toString()}'),
@@ -662,8 +707,7 @@ class _HomePageState extends State<HomePage>
                               ),
                             ],
                           ),
-                          // Weather description
-                          Text(dailyData.description),
+                          Text(dailyData.description), // Weather description
                         ],
                       ),
                     ),
