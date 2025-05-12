@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'services/location_service.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,9 +33,13 @@ class _HomePageState extends State<HomePage>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
+  final LocationService _locationService = LocationService();
 
-  // State variable to track the displayed text
+  // State variables
   String _displayText = '';
+  Position? _currentPosition;
+  String? _errorMessage;
+  bool _isLoadingLocation = false;
 
   @override
   void initState() {
@@ -42,17 +48,41 @@ class _HomePageState extends State<HomePage>
     _tabController.addListener(() {
       setState(() {});
     });
+
+    // Try to get location when app starts
+    _getLocation();
   }
 
-  void _getLocation() {
-    // Update state for geolocation
+  Future<void> _getLocation() async {
     setState(() {
-      _displayText = "Geolocation";
+      _isLoadingLocation = true;
+      _errorMessage = null;
     });
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Getting current location...')),
-    );
+    try {
+      final position = await _locationService.getCurrentLocation();
+      setState(() {
+        _currentPosition = position;
+        if (position != null) {
+          _displayText = _locationService.formatLocation(position);
+        }
+        _isLoadingLocation = false;
+      });
+    } catch (e) {
+      setState(() {
+        _errorMessage = e.toString();
+        _isLoadingLocation = false;
+        _displayText = 'Please enter a city name to get weather information';
+      });
+
+      // Show error message to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Location error: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   void _searchLocation() {
@@ -79,24 +109,78 @@ class _HomePageState extends State<HomePage>
   // Helper method to build tab content
   Widget _buildTabContent(String tabName) {
     return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            tabName,
-            style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
-            textAlign: TextAlign.center,
-          ),
-          if (_displayText.isNotEmpty)
-            Padding(
-              padding: const EdgeInsets.only(top: 16.0),
-              child: Text(
-                _displayText,
-                style: const TextStyle(fontSize: 24),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              tabName,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+
+            // Show loading indicator when fetching location
+            if (_isLoadingLocation)
+              Column(
+                children: [
+                  const CircularProgressIndicator(),
+                  const SizedBox(height: 16),
+                  const Text('Getting your location...'),
+                ],
+              )
+            // Show error message if there's an error
+            else if (_errorMessage != null)
+              Column(
+                children: [
+                  const Icon(Icons.error_outline, color: Colors.red, size: 48),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Unable to access location',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Please enter a city name in the search bar',
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              )
+            // Show location information when available
+            else if (_currentPosition != null)
+              Column(
+                children: [
+                  const Icon(Icons.location_on, color: Colors.green, size: 48),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Your Current Location',
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    _displayText,
+                    style: const TextStyle(fontSize: 16),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Ready to fetch weather data',
+                    style: TextStyle(color: Colors.grey[600]),
+                  ),
+                ],
+              )
+            // Show a default message
+            else
+              const Text(
+                'Search for a location or use your current location',
                 textAlign: TextAlign.center,
               ),
-            ),
-        ],
+          ],
+        ),
       ),
     );
   }
